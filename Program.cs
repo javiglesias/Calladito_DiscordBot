@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,13 +10,17 @@ using System.Threading.Tasks;
 
 namespace Calladito_DiscordBot
 {
+    //  TODO molaria poder añadir, eliminar y mostrar las frases desde el discord.
     class Program
     {
         private DiscordSocketClient m_bot;
+        GLOBALS gl = new GLOBALS();
+        private JArray m_insultos_list = new JArray();
         public static Task Main(string[] args) => new Program().MainAsync();
 
         public async Task MainAsync()
         {
+            m_insultos_list = (JArray)gl.read_insultos_file()["insultos"];
             m_bot = new DiscordSocketClient();
             await m_bot.LoginAsync(Discord.TokenType.Bot, GLOBALS.m_bot_token);
             await m_bot.StartAsync();
@@ -37,7 +42,27 @@ namespace Calladito_DiscordBot
         {
             if (!_after.Author.IsBot)
             {
-                await SendInsultoToChannel(_after.Author.Username, _after.Channel as IMessageChannel);
+                if(_after.Content.Contains("calla_tontito_add"))// Es un comando del Bot
+                {
+                    if(AddNewInsulto(_after.Content.Substring("calla_tontito_add".Length)))
+                    {
+                        await SendMessageToChannel("Insulto added.", _after.Channel as IMessageChannel);
+                    } else
+                    {
+                        await SendMessageToChannel("Insulto duplicated", _after.Channel as IMessageChannel);
+                    }
+                }
+                else if(_after.Content.Contains("calla_tontito_delete"))// Es un comando del Bot
+                {
+                    await SendMessageToChannel("Not Implemented.", _after.Channel as IMessageChannel);
+                }
+                else if(_after.Content.Contains("calla_tontito_show"))// Es un comando del Bot
+                {
+                    await SendMessageToChannel(m_insultos_list.ToString(), _after.Channel as IMessageChannel);
+                } else
+                {
+                    await SendInsultoToChannel(_after.Author.Username, _after.Channel as IMessageChannel);
+                }
             }
         }
         /// <summary>
@@ -57,7 +82,7 @@ namespace Calladito_DiscordBot
                     // Id = 696839428143972395
                     Random rng = new Random();
                     var voice_conn = await _state2.VoiceChannel.ConnectAsync();
-                    var calladito_sound = GLOBALS.m_insultos_list[rng.Next(0, 3)];
+                    var calladito_sound = m_insultos_list[rng.Next(0, 3)];
                     var ps1 = new ProcessStartInfo
                     {
                         FileName = @"ffmpeg.exe",
@@ -74,7 +99,7 @@ namespace Calladito_DiscordBot
             }
         }
         /// <summary>
-        /// It sends an Insulto a channel specified.
+        /// It sends an Insulto a specified channel.
         /// </summary>
         /// <param name="_user"></param>
         /// <param name="_channel"></param>
@@ -82,8 +107,31 @@ namespace Calladito_DiscordBot
         private async Task SendInsultoToChannel(string _user, IMessageChannel _channel)
         {
             Random rng = new Random();
-            var calladito_text = GLOBALS.m_insultos_list[rng.Next(0, GLOBALS.m_insultos_list.Count)].ToString();
-            await _channel.SendMessageAsync(_user + ", " + calladito_text, true);
+            var calladito_text = m_insultos_list[rng.Next(0, m_insultos_list.Count)].ToString();
+            await SendMessageToChannel(_user + ", " + calladito_text, _channel, true);
+        }
+        /// <summary>
+        /// It sends an message to a specified channel.
+        /// </summary>
+        /// <param name="_user"></param>
+        /// <param name="_channel"></param>
+        /// <returns></returns>
+        private async Task SendMessageToChannel(string _message, IMessageChannel _channel, bool _isTTS = false)
+        {
+            await _channel.SendMessageAsync(_message, _isTTS);
+        }
+
+        private bool AddNewInsulto(string insulto)
+        {
+            if(!m_insultos_list.Children().Contains(insulto))
+            {
+                m_insultos_list.Add(insulto);
+                gl.add_insulto_to_file(m_insultos_list);
+                return true;
+            } else
+            {
+                return false;
+            }
         }
     }
 }
