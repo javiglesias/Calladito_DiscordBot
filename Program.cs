@@ -10,7 +10,9 @@ using System.Threading.Tasks;
 
 namespace Calladito_DiscordBot
 {
-    //  TODO molaria poder añadir, eliminar y mostrar las frases desde el discord.
+    //  TODO    eliminar frases desde el discord.
+    //  TODO    eliminar automagicamente el mensaje del bot al rato
+    //  TODO    añadir, mostrar y eliminar solo funciona en un chat privado con el bot.
     class Program
     {
         private DiscordSocketClient m_bot;
