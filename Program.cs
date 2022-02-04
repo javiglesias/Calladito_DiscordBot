@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace Calladito_DiscordBot
 {
@@ -19,6 +20,9 @@ namespace Calladito_DiscordBot
         GLOBALS gl = new GLOBALS();
         private JArray m_insultos_list = new JArray();
         public static Task Main(string[] args) => new Program().MainAsync();
+        private Timer timer = new System.Timers.Timer(300000);
+        private static IMessageChannel last_channel_talked;
+        private static SocketVoiceChannel last_voice_channel_talked;
 
         public async Task MainAsync()
         {
@@ -26,6 +30,9 @@ namespace Calladito_DiscordBot
             m_bot = new DiscordSocketClient();
             await m_bot.LoginAsync(Discord.TokenType.Bot, GLOBALS.m_bot_token);
             await m_bot.StartAsync();
+            timer.AutoReset = true;
+            timer.Elapsed += new ElapsedEventHandler(ElapsedTimerToInsult);
+            timer.Start();
             //  Subscribe to events
             m_bot.MessageReceived   += MessageReceived;
             m_bot.UserVoiceStateUpdated += UserVoiceStateUpdated;
@@ -35,6 +42,7 @@ namespace Calladito_DiscordBot
                 await Task.Delay(1000);
             }
         }
+
         /// <summary>
         /// When a messege is sent to a channel, triggers this event.
         /// </summary>
@@ -63,8 +71,9 @@ namespace Calladito_DiscordBot
                     await SendMessageToChannel(m_insultos_list.ToString(), _after.Channel as IMessageChannel);
                 } else
                 {
-                    await SendInsultoToChannel(_after.Author.Username, _after.Channel as IMessageChannel);
+                    await SendInsultoToChannel(_after.Author.Mention, _after.Channel as IMessageChannel);
                 }
+                last_channel_talked = _after.Channel as IMessageChannel;
             }
         }
         /// <summary>
@@ -82,21 +91,27 @@ namespace Calladito_DiscordBot
                 if(!_user.IsBot)
                 {
                     // Id = 696839428143972395
-                    Random rng = new Random();
-                    var voice_conn = await _state2.VoiceChannel.ConnectAsync();
-                    var calladito_sound = m_insultos_list[rng.Next(0, 3)];
-                    var ps1 = new ProcessStartInfo
-                    {
-                        FileName = @"ffmpeg.exe",
-                        Arguments = $" -i {calladito_sound} -ac 2 -f s16le -ar 44100 pipe:1",
-                        RedirectStandardOutput = true,
-                        UseShellExecute = true
-                    };
-                    var ffmpeg = Process.Start(ps1);
-                    var std_output = ffmpeg.StandardOutput.BaseStream;
-                    var discord_output = voice_conn.CreatePCMStream(Discord.Audio.AudioApplication.Music, 96000);
-                    await std_output.CopyToAsync(discord_output);
-                    discord_output.Flush();
+                    //Random rng = new Random();
+                    //last_voice_channel_talked = _state2.VoiceChannel;
+                    //var calladito_sound = "resources\\Sounds\\agarrame.wav";
+                    //System.Diagnostics.Process process = new System.Diagnostics.Process();
+                    //var ps1 = new ProcessStartInfo
+                    //{
+                    //    CreateNoWindow = false,
+                    //    FileName = @"cmd.exe",
+                    //    Arguments = $"ffmpeg.exe -i {calladito_sound} -ac 2 -f s16le -ar 44100 pipe:1",
+                    //    RedirectStandardOutput = true,
+                    //    UseShellExecute = true
+                    //};
+                    //process.StartInfo = ps1;
+                    //process.Start();
+                    //var std_output = process.StandardOutput.BaseStream;
+                    //var voice_conn = await _state2.VoiceChannel.ConnectAsync();
+                    //var discord_output = voice_conn.CreatePCMStream(Discord.Audio.AudioApplication.Music, 96000);
+                    //await std_output.CopyToAsync(discord_output);
+                    //discord_output.Flush();
+                    if (last_channel_talked != null)
+                        SendInsultoToChannel(_user.Mention, last_channel_talked);
                 }
             }
         }
@@ -134,6 +149,14 @@ namespace Calladito_DiscordBot
             {
                 return false;
             }
+        }
+        /// <summary>
+        /// It calls when the timer has elapsed.
+        /// </summary>
+        private void ElapsedTimerToInsult(object sender, ElapsedEventArgs e)
+        {
+            if(last_channel_talked != null)
+                SendInsultoToChannel("@", last_channel_talked);
         }
     }
 }
