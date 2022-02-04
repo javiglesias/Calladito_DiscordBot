@@ -23,6 +23,7 @@ namespace Calladito_DiscordBot
         private Timer timer = new System.Timers.Timer(300000);
         private static IMessageChannel last_channel_talked;
         private static SocketVoiceChannel last_voice_channel_talked;
+        private SocketUser last_user_talked;
 
         public async Task MainAsync()
         {
@@ -74,6 +75,7 @@ namespace Calladito_DiscordBot
                     await SendInsultoToChannel(_after.Author.Mention, _after.Channel as IMessageChannel);
                 }
                 last_channel_talked = _after.Channel as IMessageChannel;
+                last_user_talked = _after.Author;
             }
         }
         /// <summary>
@@ -111,9 +113,22 @@ namespace Calladito_DiscordBot
                     //await std_output.CopyToAsync(discord_output);
                     //discord_output.Flush();
                     if (last_channel_talked != null)
-                        SendInsultoToChannel(_user.Mention, last_channel_talked);
+                        SendInsultoToPeople(_user);
+                    last_user_talked = _user;
                 }
             }
+        }
+        /// <summary>
+        /// Whispers a user with a Insulto
+        /// </summary>
+        /// <param name="_user"></param>
+        /// <param name="_channel"></param>
+        /// <returns></returns>
+        private async Task SendInsultoToPeople(SocketUser _user)
+        {
+            Random rng = new Random();
+            var calladito_text = m_insultos_list[rng.Next(0, m_insultos_list.Count)].ToString();
+            _user.SendMessageAsync(calladito_text);
         }
         /// <summary>
         /// It sends an Insulto a specified channel.
@@ -126,6 +141,17 @@ namespace Calladito_DiscordBot
             Random rng = new Random();
             var calladito_text = m_insultos_list[rng.Next(0, m_insultos_list.Count)].ToString();
             await SendMessageToChannel(_user + ", " + calladito_text, _channel, true);
+        }
+        /// <summary>
+        /// It sends a message to a User.
+        /// </summary>
+        /// <param name="_message"></param>
+        /// <param name="_channel"></param>
+        /// <param name="_isTTS"></param>
+        /// <returns></returns>
+        private async Task SendMessageToUser(string _message, IMessageChannel _channel, bool _isTTS = false)
+        {
+            await _channel.SendMessageAsync(_message, _isTTS);
         }
         /// <summary>
         /// It sends an message to a specified channel.
@@ -156,7 +182,7 @@ namespace Calladito_DiscordBot
         private void ElapsedTimerToInsult(object sender, ElapsedEventArgs e)
         {
             if(last_channel_talked != null)
-                SendInsultoToChannel("@", last_channel_talked);
+                SendInsultoToChannel(last_user_talked.Mention, last_channel_talked);
         }
     }
 }
