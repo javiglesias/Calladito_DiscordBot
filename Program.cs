@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
+using System.Windows.Interop;
 
 namespace Calladito_DiscordBot
 {
@@ -55,8 +56,9 @@ namespace Calladito_DiscordBot
             {
                 if(_after.Content.Contains("calla_tontito_add"))// Es un comando del Bot
                 {
-                    if(AddNewInsulto(_after.Content.Substring("calla_tontito_add".Length)))
+                    if(AddNewInsulto(_after.Content.Substring("calla_tontito_show ".Length)))
                     {
+                        _after.DeleteAsync();
                         await SendMessageToChannel("Insulto added.", _after.Channel as IMessageChannel);
                     } else
                     {
@@ -69,10 +71,23 @@ namespace Calladito_DiscordBot
                 }
                 else if(_after.Content.Contains("calla_tontito_show"))// Es un comando del Bot
                 {
-                    await SendMessageToChannel(m_insultos_list.ToString(), _after.Channel as IMessageChannel);
+                    string msg = "Los ultimos insultos agregados:\n";
+                    int count = 15;
+                    int tempCount;
+                    Int32.TryParse(_after.Content.Substring("calla_tontito_show".Length), out tempCount);
+                    if (tempCount <= count)
+                        count = tempCount;
+                    for (int i = 1; i <= count; i++)
+                    {
+                        if ((msg.Length + (m_insultos_list[m_insultos_list.Count() - i]).ToString().Length) < 2000)
+                            msg += m_insultos_list[m_insultos_list.Count() - i] + "\n";
+                        else
+                            break;
+                    }
+                    await SendMessageToChannel(msg, _after.Channel as IMessageChannel);
                 } else
                 {
-                    await SendInsultoToChannel(_after.Author.Mention, _after.Channel as IMessageChannel);
+                    await SendInsultoToChannel(_after.Author.Mention + " (" + _after.Author.Username + ")", _after.Channel as IMessageChannel);
                 }
                 last_channel_talked = _after.Channel as IMessageChannel;
                 last_user_talked = _after.Author;
@@ -92,6 +107,9 @@ namespace Calladito_DiscordBot
             {
                 if(!_user.IsBot)
                 {
+                    if (last_channel_talked == null)
+                        SendInsultoToPeople(_user);
+                    last_user_talked = _user;
                     // Id = 696839428143972395
                     //Random rng = new Random();
                     //last_voice_channel_talked = _state2.VoiceChannel;
@@ -101,7 +119,7 @@ namespace Calladito_DiscordBot
                     //{
                     //    CreateNoWindow = false,
                     //    FileName = @"cmd.exe",
-                    //    Arguments = $"ffmpeg.exe -i {calladito_sound} -ac 2 -f s16le -ar 44100 pipe:1",
+                    //    Arguments = $"\"D:\\GDC24\\ffmpeg\\bin\\ffmpeg.exe\" -i {calladito_sound} -ac 2 -f s16le -ar 44100 pipe:1",
                     //    RedirectStandardOutput = true,
                     //    UseShellExecute = true
                     //};
@@ -112,9 +130,6 @@ namespace Calladito_DiscordBot
                     //var discord_output = voice_conn.CreatePCMStream(Discord.Audio.AudioApplication.Music, 96000);
                     //await std_output.CopyToAsync(discord_output);
                     //discord_output.Flush();
-                    if (last_channel_talked != null)
-                        SendInsultoToPeople(_user);
-                    last_user_talked = _user;
                 }
             }
         }
@@ -161,7 +176,9 @@ namespace Calladito_DiscordBot
         /// <returns></returns>
         private async Task SendMessageToChannel(string _message, IMessageChannel _channel, bool _isTTS = false)
         {
-            await _channel.SendMessageAsync(_message, _isTTS);
+            var msg = await _channel.SendMessageAsync(_message, _isTTS);
+            await Task.Delay(10000);
+            await msg.DeleteAsync();
         }
 
         private bool AddNewInsulto(string insulto)
